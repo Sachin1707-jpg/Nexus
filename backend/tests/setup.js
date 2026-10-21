@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-test-'));
+process.env.DATA_DIR = dir;
+process.env.MCP_AUTH_TOKEN = 'test-mcp-token-0123456789';
+process.env.SESSION_SECRET = 'test-session-secret-0123456789';
+process.env.TOKEN_ENCRYPTION_KEY = 'test-key';
+process.env.PORT = process.env.PORT ?? '18787';
+process.env.NODE_ENV = 'test';
+process.env.GEMINI_API_KEY = '';
+process.env.OLLAMA_URL = 'http://127.0.0.1:18434';
+process.env.APPROVED_DIRS = path.join(dir, 'approved');
+process.env.DEFAULT_LOCATION = '';
+fs.mkdirSync(path.join(dir, 'approved'), { recursive: true });
+export const TEST_DIR = dir;

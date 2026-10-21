@@ -1,0 +1,12 @@
+node_modules/
+dist/
+data/
+.env
+.env.*
+!.env.example
+*.db
+*.db-wal
+*.db-shm
+.token.key
+local-transcription/.venv/
+__pycache__/

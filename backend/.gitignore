@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+.token.key
+
+# Database and SQLite data
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# Logs
+logs/
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
