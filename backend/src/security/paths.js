@@ -7,7 +7,23 @@ export function resolveInside(target, roots) {
   if (typeof target !== 'string' || target.includes('\0')) throw httpError(400, 'Invalid path.');
   const abs = path.resolve(target);
   let real;
-  try { real = fs.realpathSync(abs); } catch { real = abs; }
+  try {
+    real = fs.realpathSync(abs);
+  } catch {
+    let curr = abs;
+    const parts = [];
+    while (curr && curr !== path.dirname(curr)) {
+      try {
+        const realCurr = fs.realpathSync(curr);
+        real = path.join(realCurr, ...parts);
+        break;
+      } catch {
+        parts.unshift(path.basename(curr));
+        curr = path.dirname(curr);
+      }
+    }
+    if (!real) real = abs;
+  }
   for (const r of roots) {
     let root; try { root = fs.realpathSync(path.resolve(r)); } catch { root = path.resolve(r); }
     const rel = path.relative(root, real);

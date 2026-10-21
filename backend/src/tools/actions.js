@@ -37,8 +37,8 @@ export const ACTIONS = {
     execute: async (p) => ({ deleted: await sys.deleteFiles(p) }),
   },
   'system.kill_process': {
-    schema: z.object({ pid: z.number().int().positive(), name: z.string().min(1) }),
-    describe: (p) => ({ title: `Stop process ${p.name} (PID ${p.pid})`, lines: [], consequence: 'The process will be asked to terminate. Unsaved work in that program may be lost.' }),
+    schema: z.object({ pid: z.number().int().positive(), name: z.string().min(1), command: z.string().optional() }),
+    describe: (p) => ({ title: `Stop process ${p.name} (PID ${p.pid})`, lines: [`Process: ${p.name}`, `PID: ${p.pid}`, p.command ? `Command: ${p.command}` : null].filter(Boolean), consequence: 'The process will be asked to terminate. Unsaved work in that program may be lost.' }),
     execute: async (p) => { await sys.killProcess({ pid: p.pid, expectedName: p.name }); return { stopped: p.name }; },
   },
   'github.open_pr': {

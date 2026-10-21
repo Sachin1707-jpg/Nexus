@@ -50,7 +50,8 @@ test('path traversal and symlink escape are blocked', () => {
   assert.throws(() => resolveInside(path.join(root, '..', 'secret'), [root]), /outside/);
   assert.throws(() => resolveInside('/etc/passwd', [root]), /outside/);
   assert.throws(() => resolveInside(root, []), /approved/);
-  const link = path.join(root, 'link'); try { fs.symlinkSync('/etc', link); assert.throws(() => resolveInside(path.join(link, 'passwd'), [root]), /outside/); } catch (e) { if (e.code !== 'EPERM') throw e; }
+  const linkTarget = process.platform === 'win32' ? (process.env.SystemRoot || 'C:\\Windows') : '/etc';
+  const link = path.join(root, 'link'); try { fs.symlinkSync(linkTarget, link, process.platform === 'win32' ? 'junction' : 'dir'); assert.throws(() => resolveInside(path.join(link, 'passwd'), [root]), /outside/); } catch (e) { if (e.code !== 'EPERM') throw e; }
 });
 test('weather assessment is derived from forecast data only', () => {
   const mk = (rain, tmax) => ({ daily: [{ date: '2026-10-22', rainProb: rain, tMax: tmax, tMin: 20, windMax: 10, uv: 5 }], hourly: Array.from({ length: 24 }, (_, h) => ({ time: `2026-10-22T${String(h).padStart(2, '0')}:00`, rainProb: h >= 13 && h <= 16 ? 80 : 5, rainMm: 0, wind: 8, temp: 28 })) });

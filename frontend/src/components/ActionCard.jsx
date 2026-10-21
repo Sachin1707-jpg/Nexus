@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Check, X, Pencil, ShieldAlert, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Check, X, Pencil, ShieldAlert, Loader2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { api } from '../services/api.js';
 import { Modal } from './ui.jsx';
-
-// Mirror of the backend hash so we can send the hash of what the user actually saw.
-async function sha256Hex(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join(''); }
-const stable = (v) => JSON.stringify(v, (k, val) => (val && typeof val === 'object' && !Array.isArray(val) ? Object.fromEntries(Object.entries(val).sort(([a], [b]) => a.localeCompare(b))) : val));
-export const hashOf = (type, payload) => sha256Hex(type + stable(payload));
 
 const FIELDS = { 'email.send': [['to', 'To', 'input'], ['cc', 'Cc', 'input'], ['subject', 'Subject', 'input'], ['body', 'Message', 'textarea']], 'calendar.update': [['title', 'Title', 'input'], ['date', 'Date (YYYY-MM-DD)', 'input'], ['startTime', 'Start (HH:MM)', 'input'], ['endTime', 'End (HH:MM)', 'input'], ['location', 'Location', 'input']], 'github.open_pr': [['title', 'Pull request title', 'input'], ['body', 'Description', 'textarea'], ['branch', 'New branch name', 'input']] };
 
@@ -18,7 +13,10 @@ export default function ActionCard({ action: initial, onChange }) {
 
   const approve = async () => {
     setBusy(true); setErr('');
-    try { const hash = await hashOf(a.type, a.payload); upd(await api(`/actions/${a.id}/approve`, { method: 'POST', body: { hash } })); }
+    try {
+      const hash = a.payloadHash;
+      upd(await api(`/actions/${a.id}/approve`, { method: 'POST', body: { hash } }));
+    }
     catch (e) { setErr(e.message); if (e.code === 'payload_changed' || e.code === 'expired') refresh().catch(() => {}); }
     finally { setBusy(false); }
   };
@@ -27,17 +25,19 @@ export default function ActionCard({ action: initial, onChange }) {
 
   const p = a.preview ?? { title: a.summary, lines: [] };
   const fields = FIELDS[a.type];
-  const state = a.executionStatus === 'succeeded' ? 'done' : a.executionStatus === 'failed' ? 'failed' : a.approvalStatus === 'cancelled' || a.approvalStatus === 'expired' ? 'cancelled' : '';
+  const state = a.executionStatus === 'succeeded' ? 'done' : (a.executionStatus === 'failed' || a.executionStatus === 'executed_unverified' || a.executionStatus === 'interrupted') ? 'failed' : a.approvalStatus === 'cancelled' || a.approvalStatus === 'expired' ? 'cancelled' : '';
   const pending = a.approvalStatus === 'pending' && a.executionStatus === 'not_started';
   return (
     <div className={`approval ${state}`} role="group" aria-label={`Approval: ${p.title}`}>
       <div className="row"><ShieldAlert size={18} style={{ color: 'var(--accent)' }} /><strong className="grow">{p.title}</strong>
         <span className={`badge ${state === 'done' ? 'ok' : state === 'failed' ? 'bad' : pending ? 'accent' : ''}`}>
-          {a.executionStatus === 'running' ? 'Executing…' : a.executionStatus === 'succeeded' ? 'Done and verified' : a.executionStatus === 'failed' ? 'Failed' : a.approvalStatus === 'expired' ? 'Expired' : a.approvalStatus === 'cancelled' ? 'Cancelled' : 'Waiting for you'}</span></div>
+          {a.executionStatus === 'running' ? 'Executing…' : a.executionStatus === 'succeeded' ? 'Done and verified' : a.executionStatus === 'executed_unverified' ? 'Executed (unverified)' : a.executionStatus === 'interrupted' ? 'Interrupted' : a.executionStatus === 'failed' ? 'Failed' : a.approvalStatus === 'expired' ? 'Expired' : a.approvalStatus === 'cancelled' ? 'Cancelled' : 'Waiting for you'}</span></div>
       {p.lines?.length > 0 && <div className="lines">{p.lines.map((l, i) => <div key={i}>{l || ' '}</div>)}</div>}
       {p.diff && <pre className="diff">{p.diff.split('\n').map((l, i) => <span key={i} className={l.startsWith('+ ') ? 'add' : l.startsWith('- ') ? 'del' : ''}>{l || ' '}</span>)}</pre>}
       {pending && <div className="small muted">{p.consequence}</div>}
       {a.executionStatus === 'succeeded' && <div className="row small" style={{ color: 'var(--ok)' }}><CheckCircle2 size={16} />Confirmed with the service after running. {a.result?.number ? `Pull request #${a.result.number}` : ''}</div>}
+      {a.executionStatus === 'executed_unverified' && <div className="row small" style={{ color: 'var(--warn, #f59e0b)' }}><AlertTriangle size={16} />Action may have happened on the service, but verification failed: {a.error}. Check the service before retrying.</div>}
+      {a.executionStatus === 'interrupted' && <div className="row small" style={{ color: 'var(--warn, #f59e0b)' }}><AlertTriangle size={16} />Server restarted while executing. {a.error || 'Check the service before retrying.'}</div>}
       {a.executionStatus === 'failed' && <div className="row small" style={{ color: 'var(--bad)' }}><XCircle size={16} />{a.error}. Nothing was reported as done.</div>}
       {err && <div className="small" style={{ color: 'var(--bad)' }} role="alert">{err}</div>}
       {pending && <div className="actions">

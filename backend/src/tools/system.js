@@ -17,6 +17,6 @@ export const systemTools = [
     schema: { paths: z.array(z.string().min(1)).min(1).max(50) },
     handler: async (a, ctx) => ok({ pendingActions: [propose({ ...ctx, type: 'system.delete_files', payload: a })] }) },
   { name: 'system_propose_kill_process', domain: 'system', risk: 'approval', description: 'Propose stopping a process by pid and exact name (needs approval).',
-    schema: { pid: z.number().int().positive(), name: z.string().min(1) },
+    schema: { pid: z.number().int().positive(), name: z.string().min(1), command: z.string().optional() },
     handler: async (a, ctx) => ok({ pendingActions: [propose({ ...ctx, type: 'system.kill_process', payload: a })] }) },
 ];

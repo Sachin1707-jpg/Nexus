@@ -13,6 +13,7 @@ import { mcpHandler, mcpMethodNotAllowed } from './mcp/server.js';
 import { api, googleCallback } from './routes/api.js';
 import { purgeOlderThan } from './services/conversations.js';
 import { getSettings } from './services/settings.js';
+import { recoverInterruptedActions } from './services/approvals.js';
 
 export function createApp() {
   registerAllActions();
@@ -52,7 +53,8 @@ export function startServer() {
   const db = getDb();
   const eph = db.prepare('DELETE FROM conversations WHERE save_history=0').run().changes;
   const old = purgeOlderThan(getSettings().retentionDays);
-  if (eph || old) logger.info('startup cleanup', { ephemeralRemoved: eph, retentionRemoved: old });
+  const interrupted = recoverInterruptedActions();
+  if (eph || old || interrupted) logger.info('startup cleanup', { ephemeralRemoved: eph, retentionRemoved: old, interruptedActions: interrupted });
   const app = createApp();
   return app.listen(config.PORT, config.HOST, () => {
     logger.info(`Nexus listening on http://${config.HOST}:${config.PORT}`, { model: config.OLLAMA_MODEL });

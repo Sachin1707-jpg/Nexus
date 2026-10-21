@@ -30,6 +30,7 @@ const schema = z.object({
   APPROVED_DIRS: z.string().default(''),
   WHISPER_URL: z.string().default('http://127.0.0.1:8788'),
   APPROVAL_TTL_MINUTES: z.coerce.number().default(15),
+  APPROVAL_MAX_PENDING: z.coerce.number().int().positive().default(20),
   GEMINI_API_KEY: z.string().default(''),
   GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
 });
