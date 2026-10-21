@@ -71,7 +71,7 @@ test('only routed tool domains are exposed to the model (speed + accuracy)', asy
   const id = await newConv(); queue.push({ content: 'hi' }, { content: 'hi' });
   await chat('Mere laptop mein kya problem chal rahi hai?', id);
   const names = seen[0].tools.map((t) => t.function.name);
-  assert.ok(names.every((n) => n.startsWith('system_')) && names.length === 6);
+  assert.ok(names.length === 7 && names.filter((n) => n.startsWith('system_')).length === 6 && names.includes('action_get_status'));
   seen.length = 0; queue.push({ content: 'hello' }, { content: 'hello' }); await chat('hello there', id);
   assert.equal(seen[0].tools, undefined);
 });

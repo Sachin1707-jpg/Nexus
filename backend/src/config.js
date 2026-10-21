@@ -16,7 +16,10 @@ const schema = z.object({
   DATA_DIR: z.string().default(path.join(root, 'data')),
   SESSION_SECRET: z.string().transform((s) => s.trim() || crypto.randomBytes(32).toString('hex')).pipe(z.string().min(16)),
   TOKEN_ENCRYPTION_KEY: z.string().default(''),
-  MCP_AUTH_TOKEN: z.string().default(() => crypto.randomBytes(24).toString('hex')),
+  MCP_AUTH_TOKEN: z.string().optional().transform((s) => s?.trim() ?? '').refine((s) => !s || s.length >= 32, 'MCP_AUTH_TOKEN must be at least 32 characters if set.').transform((s) => s || crypto.randomBytes(24).toString('hex')),
+  MCP_READONLY_TOKEN: z.string().optional().transform((s) => s?.trim() ?? '').refine((s) => !s || s.length >= 32, 'MCP_READONLY_TOKEN must be at least 32 characters if set.').default(''),
+  MCP_ALLOWED_HOSTS: z.string().default(''),
+  MCP_ALLOW_PROPOSE_TOOLS: z.enum(['false', 'true']).default('false'),
   OLLAMA_URL: z.string().default('http://127.0.0.1:11434'),
   OLLAMA_MODEL: z.string().default('qwen3:4b'),
   OLLAMA_THINK: z.enum(['false', 'true']).default('false'),
@@ -33,6 +36,9 @@ const schema = z.object({
   APPROVAL_MAX_PENDING: z.coerce.number().int().positive().default(20),
   GEMINI_API_KEY: z.string().default(''),
   GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
+}).refine((data) => !data.MCP_READONLY_TOKEN || data.MCP_READONLY_TOKEN !== data.MCP_AUTH_TOKEN, {
+  message: 'MCP_READONLY_TOKEN must differ from MCP_AUTH_TOKEN',
+  path: ['MCP_READONLY_TOKEN'],
 });
 
 const parsed = schema.safeParse(process.env);
@@ -45,6 +51,9 @@ const env = parsed.data;
 export const config = {
   ...env,
   root,
+  hasCustomMcpToken: Boolean(process.env.MCP_AUTH_TOKEN?.trim()),
+  mcpAllowedHosts: env.MCP_ALLOWED_HOSTS.split(';').map((s) => s.trim().toLowerCase()).filter(Boolean),
+  allowProposeToolsInReadOnly: env.MCP_ALLOW_PROPOSE_TOOLS === 'true',
   think: env.OLLAMA_THINK === 'true',
   approvedDirs: env.APPROVED_DIRS.split(';').map((s) => s.trim()).filter(Boolean),
   isProd: env.NODE_ENV === 'production',

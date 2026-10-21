@@ -32,8 +32,12 @@ export function createApp() {
     next();
   });
   app.use(cookieParser());
-  app.use('/api', rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false }));
-  app.use('/api/chat', rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false }));
+  // General API limiter: 600 req/min per IP (generous for local dev; tighten in prod behind a reverse proxy)
+  app.use('/api', rateLimit({ windowMs: 60_000, limit: 600, standardHeaders: true, legacyHeaders: false }));
+  // Chat-specific limiter: 60 turns/min per IP.
+  // In dev (NODE_ENV !== 'production') skip loopback so tests and local UI don't exhaust the bucket.
+  const skipLoopbackInDev = (req) => config.NODE_ENV !== 'production' && (req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1');
+  app.use('/api/chat', rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: true, legacyHeaders: false, skip: skipLoopbackInDev }));
   app.get('/api/auth/google/callback', googleCallback);
   app.get('/healthz', (req, res) => res.json({ ok: true }));
   app.use('/api', express.json({ limit: '2mb' }), sessionMiddleware, csrfGuard, api);
@@ -58,7 +62,7 @@ export function startServer() {
   const app = createApp();
   return app.listen(config.PORT, config.HOST, () => {
     logger.info(`Nexus listening on http://${config.HOST}:${config.PORT}`, { model: config.OLLAMA_MODEL });
-    if (!process.env.MCP_AUTH_TOKEN) logger.warn('MCP_AUTH_TOKEN not set: a random token is generated each start. Set it in .env for external MCP clients.');
+    if (!config.hasCustomMcpToken) logger.warn('external MCP clients need a stable MCP_AUTH_TOKEN in .env; this one changes on every restart.');
   });
 }
 import { fileURLToPath } from 'node:url';

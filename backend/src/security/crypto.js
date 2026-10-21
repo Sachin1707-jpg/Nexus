@@ -27,6 +27,8 @@ export function decrypt(b64) {
 export const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
 export const randomId = () => crypto.randomUUID();
 export function safeEqual(a, b) {
-  const x = Buffer.from(String(a)); const y = Buffer.from(String(b));
-  return x.length === y.length && crypto.timingSafeEqual(x, y);
+  if (typeof a !== 'string' || typeof b !== 'string' || !a || !b) return false;
+  const hashA = crypto.createHash('sha256').update(a).digest();
+  const hashB = crypto.createHash('sha256').update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
 }

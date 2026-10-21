@@ -10,7 +10,7 @@ import { addMessage, getMessages, getConversation, searchHistory } from '../serv
 import { get as getAction } from '../services/approvals.js';
 import { logger } from '../logger.js';
 
-const MAX_STEPS = 5;
+const MAX_STEPS = 4;
 const STATUS = {
   tasks_list: 'Checking your tasks', tasks_create: 'Creating the task', tasks_update: 'Updating the task', tasks_delete: 'Preparing task deletion',
   calendar_list_events: 'Checking your calendar', calendar_create_event: 'Creating the event', calendar_update_event: 'Preparing the calendar change', calendar_delete_event: 'Preparing to cancel the event',
@@ -84,14 +84,17 @@ export async function runTurn({ sessionId, conversationId, text, emit = () => {}
   const settings = getSettings();
   const conv = getConversation(sessionId, conversationId);
   const ctx = { sessionId, conversationId };
-  const priorMsgs = getMessages(conversationId, 14);
+  // Fetch 8 prior messages (down from 14); send last 6 to model to keep context tight
+  const priorMsgs = getMessages(conversationId, 8);
   const lastDomains = [...(priorMsgs.filter((m) => m.role === 'assistant' && m.meta?.domains?.length).at(-1)?.meta.domains ?? [])];
 
   addMessage(conversationId, 'user', text);
   if (conv.title === 'New conversation') getDb().prepare('UPDATE conversations SET title=? WHERE id=?').run(text.slice(0, 50), conversationId);
 
   const route = routeMessage(text, lastDomains);
-  const memories = getDb().prepare('SELECT content FROM memories ORDER BY created_at DESC LIMIT 15').all().map((m) => m.content);
+  // Only include memories when the message has a real domain or is a support request (saves tokens on smalltalk)
+  const needsMemories = route.domains.length > 0 || route.support || route.crisis;
+  const memories = needsMemories ? getDb().prepare('SELECT content FROM memories ORDER BY created_at DESC LIMIT 8').all().map((m) => m.content) : [];
   const history = wantsHistory(text) ? searchHistory(sessionId, text, conversationId) : [];
 
   let tools = [];
@@ -101,9 +104,21 @@ export async function runTurn({ sessionId, conversationId, text, emit = () => {}
       tools = all.filter((t) => route.domains.includes(toolByName.get(t.name)?.domain)).map(toOllamaTool);
     } catch (e) { emit({ type: 'error', message: 'The tool server (MCP) is unavailable.' }); logger.error('mcp list failed', { message: e.message }); }
   }
+
+  // Trim oversized tool-result content in history to avoid ballooning context on multi-step turns
+  const trimmedPrior = priorMsgs.slice(-6).map((m) => {
+    if (m.role === 'tool' && typeof m.content === 'string' && m.content.length > 800) {
+      try {
+        const parsed = JSON.parse(m.content);
+        return { ...m, content: JSON.stringify({ ok: parsed.ok, data: '[truncated]', summary: parsed.summary }) };
+      } catch { return { ...m, content: m.content.slice(0, 800) + '…' }; }
+    }
+    return m;
+  });
+
   const messages = [
     { role: 'system', content: systemPrompt({ tz: settings.timezone, userName: settings.userName, memories, refs: lastRefs(conversationId), support: route.support, crisis: route.crisis, extraHistory: history }) },
-    ...priorMsgs.slice(-10).map((m) => ({ role: m.role, content: m.content })),
+    ...trimmedPrior.map((m) => ({ role: m.role, content: m.content, ...(m.tool_calls ? { tool_calls: m.tool_calls } : {}), ...(m.tool_name ? { tool_name: m.tool_name } : {}) })),
     { role: 'user', content: text },
   ];
 
@@ -115,11 +130,13 @@ export async function runTurn({ sessionId, conversationId, text, emit = () => {}
     if (signal?.aborted) break;
     // STATE: THINKING (tool-selection pass — never stream tokens here; they are not the final answer)
     emit({ type: 'status', message: step === 0 ? 'Thinking' : 'Working on it' });
+    // Tool-selection pass: small output budget — we only need a tool call or a short reply
     const res = await chat({
       messages,
       tools,
       signal,
       think: step > 0 ? false : (route.support ? false : undefined),
+      numPredict: tools.length ? 256 : 512,
     });
 
     // No tool calls → this IS the final answer. Stream it now.
@@ -131,7 +148,7 @@ export async function runTurn({ sessionId, conversationId, text, emit = () => {}
           messages: [...messages, { role: 'user', content: 'Summarize the tool output above directly in clear, concise markdown for the user.' }],
           signal,
           think: false,
-          numPredict: 512,
+          numPredict: 384,
         }).catch(() => null);
         finalText = (retryRes?.content || '').trim();
       }
@@ -188,7 +205,7 @@ export async function runTurn({ sessionId, conversationId, text, emit = () => {}
     if (turn.actions.length) {
       // STATE: THINKING → approval sentence (no streaming, very short)
       emit({ type: 'status', message: 'Working on it' });
-      const r2 = await chat({ messages: [...messages, { role: 'user', content: '(System: the action is only PREPARED and awaits user approval. In one short sentence in the user\'s language, tell them to review the card and approve. Do not say it is done.)' }], signal, think: false, numPredict: 120 }).catch(() => ({ content: '' }));
+      const r2 = await chat({ messages: [...messages, { role: 'user', content: '(System: the action is only PREPARED and awaits user approval. In one short sentence in the user\'s language, tell them to review the card and approve. Do not say it is done.)' }], signal, think: false, numPredict: 80 }).catch(() => ({ content: '' }));
       finalText = r2.content || 'I\'ve prepared this for your review. Nothing has been changed yet; please check the card below and approve or cancel.';
       break;
     }
@@ -206,7 +223,7 @@ export async function runTurn({ sessionId, conversationId, text, emit = () => {}
     const recovery = await chat({
       messages: [...messages, { role: 'user', content: 'Please answer my last question directly in 1-2 clear, helpful sentences.' }],
       think: false,
-      numPredict: 256,
+      numPredict: 192,
       signal,
     }).catch(() => null);
     if (recovery?.content?.trim()) {

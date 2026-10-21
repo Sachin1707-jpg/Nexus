@@ -126,7 +126,7 @@ test('schemaNormalizer: normalizes all 29 MCP tools without $ref remaining (repr
   await Promise.all([server.connect(sTransport), client.connect(cTransport)]);
 
   const { tools: mcpTools } = await client.listTools();
-  assert.equal(mcpTools.length, 29, `Expected 29 tools, got ${mcpTools.length}`);
+  assert.equal(mcpTools.length, 30, `Expected 30 tools, got ${mcpTools.length}`);
 
   for (const t of mcpTools) {
     const norm = normalizeSchema(t.inputSchema);

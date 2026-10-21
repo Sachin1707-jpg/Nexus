@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-test-'));
 process.env.DATA_DIR = dir;
-process.env.MCP_AUTH_TOKEN = 'test-mcp-token-0123456789';
+process.env.MCP_AUTH_TOKEN = 'test-mcp-token-0123456789abcdefg';
 process.env.SESSION_SECRET = 'test-session-secret-0123456789';
 process.env.TOKEN_ENCRYPTION_KEY = 'test-key';
 process.env.PORT = process.env.PORT ?? '18787';
