@@ -4,7 +4,7 @@ import { config } from '../config.js';
 export const DEFAULTS = {
   timezone: config.TIMEZONE,
   location: config.DEFAULT_LOCATION,
-  model: config.GEMINI_MODEL || config.OLLAMA_MODEL,
+  model: config.GROQ_MODEL || config.OLLAMA_MODEL,
   think: config.think,
   speakReplies: false,
   voiceName: '',

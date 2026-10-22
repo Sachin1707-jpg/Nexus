@@ -34,8 +34,8 @@ const schema = z.object({
   WHISPER_URL: z.string().default('http://127.0.0.1:8788'),
   APPROVAL_TTL_MINUTES: z.coerce.number().default(15),
   APPROVAL_MAX_PENDING: z.coerce.number().int().positive().default(20),
-  GEMINI_API_KEY: z.string().default(''),
-  GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
+  GROQ_API_KEY: z.string().default(''),
+  GROQ_MODEL: z.string().default('qwen/qwen3.8-27b'),
 }).refine((data) => !data.MCP_READONLY_TOKEN || data.MCP_READONLY_TOKEN !== data.MCP_AUTH_TOKEN, {
   message: 'MCP_READONLY_TOKEN must differ from MCP_AUTH_TOKEN',
   path: ['MCP_READONLY_TOKEN'],

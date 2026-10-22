@@ -61,7 +61,7 @@ export function startServer() {
   if (eph || old || interrupted) logger.info('startup cleanup', { ephemeralRemoved: eph, retentionRemoved: old, interruptedActions: interrupted });
   const app = createApp();
   return app.listen(config.PORT, config.HOST, () => {
-    logger.info(`Nexus listening on http://${config.HOST}:${config.PORT}`, { model: config.OLLAMA_MODEL });
+    logger.info(`Nexus listening on http://${config.HOST}:${config.PORT}`, { model: config.GROQ_MODEL || config.OLLAMA_MODEL });
     if (!config.hasCustomMcpToken) logger.warn('external MCP clients need a stable MCP_AUTH_TOKEN in .env; this one changes on every restart.');
   });
 }
