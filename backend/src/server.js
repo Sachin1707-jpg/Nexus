@@ -19,6 +19,7 @@ export function createApp() {
   registerAllActions();
   const app = express();
   app.disable('x-powered-by');
+  app.set('trust proxy', 1);
   app.use((req, res, next) => { res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer' }); next(); });
 
   // MCP: Streamable HTTP, bearer-token protected, own body parsing.

@@ -9,7 +9,7 @@ dotenv.config({ path: path.join(root, '.env'), quiet: true });
 
 const schema = z.object({
   PORT: z.coerce.number().int().default(8787),
-  HOST: z.string().default('127.0.0.1'),
+  HOST: z.string().default(process.env.NODE_ENV === 'production' || process.env.RENDER ? '0.0.0.0' : '127.0.0.1'),
   FRONTEND_ORIGIN: z.string().default('http://localhost:5173'),
   NODE_ENV: z.string().default('development'),
   TIMEZONE: z.string().default('Asia/Kolkata'),
