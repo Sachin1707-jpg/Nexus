@@ -24,12 +24,30 @@ export function sessionMiddleware(req, res, next) {
   next();
 }
 
+/** Check whether a request origin is permitted (supports same-host cloud deployments like Render). */
+export function isAllowedOrigin(origin, req) {
+  if (!origin) return true;
+  try {
+    const originUrl = new URL(origin);
+    const host = req?.get('host')?.split(':')[0].toLowerCase();
+    if (host && originUrl.hostname.toLowerCase() === host) return true;
+  } catch { /* ignore malformed origin */ }
+
+  const allowed = [
+    config.FRONTEND_ORIGIN,
+    `http://${config.HOST}:${config.PORT}`,
+    `http://localhost:${config.PORT}`,
+    `https://${config.HOST}:${config.PORT}`,
+    `https://localhost:${config.PORT}`,
+  ].filter(Boolean);
+  return allowed.includes(origin);
+}
+
 /** CSRF + Origin check for state-changing requests. */
 export function csrfGuard(req, res, next) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
   const origin = req.get('origin');
-  const allowed = [config.FRONTEND_ORIGIN, `http://${config.HOST}:${config.PORT}`, `http://localhost:${config.PORT}`];
-  if (origin && !allowed.includes(origin)) return next(httpError(403, 'Origin not allowed.'));
+  if (origin && !isAllowedOrigin(origin, req)) return next(httpError(403, 'Origin not allowed.'));
   const token = req.get('x-nexus-csrf');
   if (!token || !safeEqual(token, req.csrfToken)) return next(httpError(403, 'Missing or invalid CSRF token.'));
   next();

@@ -7,7 +7,7 @@ import { config } from './config.js';
 import { logger } from './logger.js';
 import { openDb, getDb } from './database/db.js';
 import { registerAllActions } from './tools/actions.js';
-import { sessionMiddleware, csrfGuard } from './security/session.js';
+import { sessionMiddleware, csrfGuard, isAllowedOrigin } from './security/session.js';
 import { errorHandler, notFound } from './middleware/errors.js';
 import { mcpHandler, mcpMethodNotAllowed } from './mcp/server.js';
 import { api, googleCallback } from './routes/api.js';
@@ -26,9 +26,9 @@ export function createApp() {
   app.post('/mcp', express.json({ limit: '2mb' }), mcpHandler);
   app.all('/mcp', mcpMethodNotAllowed);
 
-  app.use((req, res, next) => { // CORS for the configured frontend only
+  app.use((req, res, next) => { // CORS for the configured frontend or same-host deployment
     const o = req.get('origin');
-    if (o && o === config.FRONTEND_ORIGIN) { res.set({ 'Access-Control-Allow-Origin': o, 'Access-Control-Allow-Credentials': 'true', 'Access-Control-Allow-Headers': 'Content-Type, X-Nexus-CSRF', 'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS', Vary: 'Origin' }); }
+    if (o && isAllowedOrigin(o, req)) { res.set({ 'Access-Control-Allow-Origin': o, 'Access-Control-Allow-Credentials': 'true', 'Access-Control-Allow-Headers': 'Content-Type, X-Nexus-CSRF', 'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS', Vary: 'Origin' }); }
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
   });

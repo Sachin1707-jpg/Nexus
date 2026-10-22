@@ -6,6 +6,7 @@ import { config } from '../config.js';
 import { safeEqual } from '../security/crypto.js';
 import { logger } from '../logger.js';
 import { audit } from '../services/audit.js';
+import { isAllowedOrigin } from '../security/session.js';
 
 export const MCP_SERVER_INFO = { name: 'nexus-assistant', version: '1.0.0' };
 
@@ -106,7 +107,8 @@ export async function mcpHandler(req, res) {
   const hostName = rawHost.split(':')[0].toLowerCase();
   const isLocalHost = ['127.0.0.1', 'localhost', '::1', config.HOST.toLowerCase()].includes(hostName);
   const isAllowedHost = config.mcpAllowedHosts.includes(hostName);
-  if (rawHost && !isLocalHost && !isAllowedHost) {
+  const isCloudHost = Boolean(process.env.RENDER) || hostName.endsWith('.onrender.com');
+  if (rawHost && !isLocalHost && !isAllowedHost && !isCloudHost) {
     logger.warn('mcp host rejected', { host: rawHost, ip: req.ip });
     return res.status(403).json({ jsonrpc: '2.0', error: { code: -32002, message: 'Host not allowed' }, id: null });
   }
@@ -134,7 +136,7 @@ export async function mcpHandler(req, res) {
   recordSuccessAuth(req.ip);
 
   const origin = req.get('origin');
-  if (origin && origin !== config.FRONTEND_ORIGIN) {
+  if (origin && !isAllowedOrigin(origin, req)) {
     return res.status(403).json({ jsonrpc: '2.0', error: { code: -32002, message: 'Origin not allowed' }, id: null });
   }
 

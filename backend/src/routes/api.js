@@ -132,7 +132,9 @@ api.get('/voice/status', wrap(async (req, res) => res.json(await whisperStatus()
 api.post('/voice/transcribe', express.raw({ type: () => true, limit: '25mb' }), wrap(async (req, res) => res.json(await transcribe(req.body, req.get('content-type'), typeof req.query.language === 'string' ? req.query.language : undefined))));
 
 export async function googleCallback(req, res) {
-  const front = config.FRONTEND_ORIGIN;
+  const front = (req.get('host') && (process.env.RENDER || config.isProd))
+    ? `${req.protocol}://${req.get('host')}`
+    : config.FRONTEND_ORIGIN;
   try {
     if (req.query.error) return res.redirect(`${front}/settings?google=denied`);
     await handleCallback(String(req.query.code ?? ''), String(req.query.state ?? ''));
