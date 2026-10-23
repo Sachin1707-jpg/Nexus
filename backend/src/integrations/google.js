@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { loadToken, saveToken, deleteToken } from '../services/tokens.js';
 import { httpError } from '../security/paths.js';
+import { logger } from '../logger.js';
 
 export const SCOPES = [
   'https://www.googleapis.com/auth/tasks',
@@ -17,8 +18,11 @@ export const googleConfigured = () => Boolean(config.GOOGLE_CLIENT_ID && config.
 
 export function buildAuthUrl(sessionId) {
   if (!googleConfigured()) throw httpError(400, 'Google OAuth is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env.', 'google_not_configured');
-  const state = crypto.randomBytes(16).toString('hex');
-  pendingStates.set(state, { sessionId, at: Date.now() });
+  const rand = crypto.randomBytes(16).toString('hex');
+  const secret = config.SESSION_SECRET || 'nexus_session_secret';
+  const sig = crypto.createHmac('sha256', secret).update(`${rand}:${sessionId}`).digest('hex');
+  const state = `${rand}.${sessionId}.${sig}`;
+  pendingStates.set(state, { sessionId, at: Date.now(), redirectUri: config.GOOGLE_REDIRECT_URI });
   for (const [k, v] of pendingStates) if (Date.now() - v.at > 10 * 60e3) pendingStates.delete(k);
   const u = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   u.search = new URLSearchParams({
@@ -28,13 +32,30 @@ export function buildAuthUrl(sessionId) {
   return u.toString();
 }
 
-export async function handleCallback(code, state) {
-  const s = pendingStates.get(state);
+export async function handleCallback(code, state, callbackUri) {
+  let s = pendingStates.get(state);
+  if (s) {
+    pendingStates.delete(state);
+  } else if (state && typeof state === 'string') {
+    const parts = state.split('.');
+    if (parts.length === 3) {
+      const [rand, sessionId, sig] = parts;
+      const secret = config.SESSION_SECRET || 'nexus_session_secret';
+      const expected = crypto.createHmac('sha256', secret).update(`${rand}:${sessionId}`).digest('hex');
+      try {
+        if (crypto.timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(expected, 'hex'))) {
+          s = { sessionId, at: Date.now(), redirectUri: config.GOOGLE_REDIRECT_URI };
+        }
+      } catch { /* invalid hex format */ }
+    }
+  }
   if (!s) throw httpError(400, 'Invalid or expired OAuth state.', 'bad_state');
-  pendingStates.delete(state);
-  const tok = await tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: config.GOOGLE_REDIRECT_URI });
+
+  const redirectUri = s.redirectUri || config.GOOGLE_REDIRECT_URI || callbackUri;
+  const tok = await tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: redirectUri });
   const info = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${tok.access_token}` } }).then((r) => r.json()).catch(() => ({}));
   saveToken('google', { ...tok, expires_at: Date.now() + (tok.expires_in - 60) * 1000, email: info.email ?? null });
+  logger.info('Google OAuth connected successfully', { email: info.email });
   return info.email ?? null;
 }
 
@@ -44,7 +65,10 @@ async function tokenRequest(params) {
     body: new URLSearchParams({ client_id: config.GOOGLE_CLIENT_ID, client_secret: config.GOOGLE_CLIENT_SECRET, ...params }),
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw httpError(401, `Google sign-in failed (${j.error ?? r.status}). Please reconnect Google in Settings.`, 'google_auth');
+  if (!r.ok) {
+    logger.error('Google token exchange failed', { status: r.status, error: j.error, description: j.error_description });
+    throw httpError(401, `Google sign-in failed (${j.error ?? r.status}): ${j.error_description ?? ''}. Please reconnect Google in Settings.`, 'google_auth');
+  }
   return j;
 }
 

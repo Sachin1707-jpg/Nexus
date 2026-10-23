@@ -39,7 +39,7 @@ export function createApp() {
   // In dev (NODE_ENV !== 'production') skip loopback so tests and local UI don't exhaust the bucket.
   const skipLoopbackInDev = (req) => config.NODE_ENV !== 'production' && (req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1');
   app.use('/api/chat', rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: true, legacyHeaders: false, skip: skipLoopbackInDev }));
-  app.get('/api/auth/google/callback', googleCallback);
+  app.get(['/api/auth/google/callback', '/auth/google/callback'], googleCallback);
   app.get('/healthz', (req, res) => res.json({ ok: true }));
   app.use('/api', express.json({ limit: '2mb' }), sessionMiddleware, csrfGuard, api);
 

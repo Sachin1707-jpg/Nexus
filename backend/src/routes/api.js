@@ -136,8 +136,15 @@ export async function googleCallback(req, res) {
     ? `${req.protocol}://${req.get('host')}`
     : config.FRONTEND_ORIGIN;
   try {
-    if (req.query.error) return res.redirect(`${front}/settings?google=denied`);
-    await handleCallback(String(req.query.code ?? ''), String(req.query.state ?? ''));
+    if (req.query.error) {
+      logger.warn('Google OAuth error from provider', { error: req.query.error });
+      return res.redirect(`${front}/settings?google=denied`);
+    }
+    const currentCallbackUri = `${req.protocol}://${req.get('host')}${req.path}`;
+    await handleCallback(String(req.query.code ?? ''), String(req.query.state ?? ''), currentCallbackUri);
     res.redirect(`${front}/settings?google=connected`);
-  } catch { res.redirect(`${front}/settings?google=error`); }
+  } catch (err) {
+    logger.error('Google OAuth callback failed', { message: err.message, stack: err.stack });
+    res.redirect(`${front}/settings?google=error`);
+  }
 }
