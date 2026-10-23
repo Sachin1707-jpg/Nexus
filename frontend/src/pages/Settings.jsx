@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { NavLink, useSearchParams } from 'react-router-dom';
 import { Mic, Volume2, Trash2, Check, X } from 'lucide-react';
 import { api } from '../services/api.js';
 import { useApp } from '../services/store.jsx';
@@ -44,7 +44,8 @@ export default function Settings() {
         <section className="card"><h2>Privacy and memory</h2>
           <Row title="Save conversation history" hint="When off, new chats are removed when the server restarts."><Switch checked={settings.saveHistory} onChange={(v) => saveSettings({ saveHistory: v })} label="Save history" /></Row>
           <Row title="Delete chats older than" hint="0 keeps everything. Applied when the server starts."><select className="select" style={{ width: 130 }} aria-label="Retention" value={settings.retentionDays} onChange={(e) => saveSettings({ retentionDays: +e.target.value })}><option value={0}>Never</option><option value={30}>30 days</option><option value={90}>90 days</option><option value={365}>1 year</option></select></Row>
-          <Row title="Delete all conversations"><button className="btn danger sm" onClick={() => setConfirm(true)}><Trash2 size={14} />Delete…</button></Row></section>
+          <Row title="Delete all conversations"><button className="btn danger sm" onClick={() => setConfirm(true)}><Trash2 size={14} />Delete…</button></Row>
+          <Row title="Privacy Policy" hint="Google Limited Use compliance, AI data disclosures, and storage details"><NavLink to="/privacy-policy" className="btn sm">Read Policy</NavLink></Row></section>
         <section className="card"><h2>Memories you asked Nexus to keep</h2>{memories.loading ? <Loading lines={2} /> : !memories.data?.length ? <div className="muted small">Nothing saved. Say “remember that…” in chat to add something.</div> : <div className="list">{memories.data.map((m) => <MemoryRow key={m.id} m={m} reload={memories.reload} />)}</div>}</section>
       </div>
       {confirm && <Modal title="Delete all conversations?" onClose={() => setConfirm(false)}><p>This permanently removes every conversation and message stored on this computer.</p><div className="row" style={{ justifyContent: 'flex-end' }}><button className="btn ghost" onClick={() => setConfirm(false)}>Cancel</button><button className="btn danger" onClick={wipe}>Delete all</button></div></Modal>}

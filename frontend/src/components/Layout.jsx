@@ -45,7 +45,9 @@ export default function Layout() {
         <div className="side-foot">
           <div className="status-line" title={status?.ollama?.message}><span className={`dot ${ok ? 'ok' : 'bad'}`} /><span className="txt">{status ? (ok ? `${status.ollama.model} ready` : status.ollama.message) : 'Server offline'}</span></div>
           <div className="row"><button className="btn icon-btn sm" onClick={() => saveSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })} aria-label="Toggle theme">{settings?.theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}</button>
-            <button className="btn icon-btn sm collapse-btn" onClick={() => setMini(!mini)} aria-label={mini ? 'Expand sidebar' : 'Collapse sidebar'}>{mini ? <PanelLeft size={15} /> : <PanelLeftClose size={15} />}</button></div>
+            <button className="btn icon-btn sm collapse-btn" onClick={() => setMini(!mini)} aria-label={mini ? 'Expand sidebar' : 'Collapse sidebar'}>{mini ? <PanelLeft size={15} /> : <PanelLeftClose size={15} />}</button>
+            <NavLink to="/privacy-policy" className="faint small" style={{ marginLeft: 'auto', textDecoration: 'none' }} title="Privacy Policy">Privacy</NavLink>
+          </div>
         </div>
       </aside>
       <div className="main">
@@ -56,7 +58,17 @@ export default function Layout() {
           <span className="badge" title="Google"><span className={`dot ${status?.google?.connected ? 'ok' : ''}`} />Google</span>
           <span className="badge" title="GitHub"><span className={`dot ${status?.github?.configured ? 'ok' : ''}`} />GitHub</span>
         </header>
-        <main className="content"><Outlet /></main>
+        <main className="content" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1 }}><Outlet /></div>
+          <footer className="app-footer">
+            <div>&copy; {new Date().getFullYear()} Nexus Workspace &bull; AI Personal Workspace Assistant</div>
+            <nav className="footer-nav" aria-label="Footer links">
+              <NavLink to="/privacy-policy">Privacy Policy</NavLink>
+              <NavLink to="/settings">Settings</NavLink>
+              <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer">Google User Data Policy</a>
+            </nav>
+          </footer>
+        </main>
       </div>
       {pal && <Palette onClose={() => setPal(false)} nav={nav} newChat={newChat} />}
     </div>
@@ -65,7 +77,12 @@ export default function Layout() {
 
 function Palette({ onClose, nav, newChat }) {
   const [q, setQ] = useState(''); const [sel, setSel] = useState(0); const { convs } = useApp();
-  const items = useMemo(() => [{ label: 'New conversation', run: newChat }, ...NAV.map(([to, t]) => ({ label: `Go to ${t}`, run: () => nav(to) })), ...convs.slice(0, 15).map((c) => ({ label: `Chat: ${c.title}`, run: () => nav(`/assistant?c=${c.id}`) }))].filter((i) => i.label.toLowerCase().includes(q.toLowerCase())), [q, convs, nav, newChat]);
+  const items = useMemo(() => [
+    { label: 'New conversation', run: newChat },
+    ...NAV.map(([to, t]) => ({ label: `Go to ${t}`, run: () => nav(to) })),
+    { label: 'Go to Privacy Policy', run: () => nav('/privacy-policy') },
+    ...convs.slice(0, 15).map((c) => ({ label: `Chat: ${c.title}`, run: () => nav(`/assistant?c=${c.id}`) }))
+  ].filter((i) => i.label.toLowerCase().includes(q.toLowerCase())), [q, convs, nav, newChat]);
   const go = (i) => { i?.run(); onClose(); };
   return <div className="palette-wrap" onMouseDown={(e) => e.target === e.currentTarget && onClose()}><div className="palette" role="dialog" aria-label="Command launcher">
     <input autoFocus placeholder="Type to search pages and chats" value={q} onChange={(e) => { setQ(e.target.value); setSel(0); }} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, items.length - 1)); } if (e.key === 'ArrowUp') { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); } if (e.key === 'Enter') go(items[sel]); }} aria-label="Search" />

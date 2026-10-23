@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './services/store.jsx';
 import Layout from './components/Layout.jsx';
 import Overview from './pages/Overview.jsx';
@@ -12,14 +12,37 @@ import System from './pages/System.jsx';
 import GitHub from './pages/GitHub.jsx';
 import AlexaLab from './pages/AlexaLab.jsx';
 import Settings from './pages/Settings.jsx';
+import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import { Loading } from './components/ui.jsx';
 
 function Shell() {
   const { boot, toasts } = useApp();
-  if (boot.loading) return <div className="page"><Loading /></div>;
-  if (boot.error) return <div className="page"><div className="notice bad" role="alert">{boot.error}</div></div>;
+  const location = useLocation();
+  const isPrivacyPage = location.pathname === '/privacy-policy';
+
+  if (!isPrivacyPage) {
+    if (boot.loading) return <div className="page"><Loading /></div>;
+    if (boot.error) return <div className="page"><div className="notice bad" role="alert">{boot.error}</div></div>;
+  }
+
   return <>
-    <Routes><Route element={<Layout />}><Route index element={<Overview />} /><Route path="assistant" element={<Assistant />} /><Route path="tasks" element={<Tasks />} /><Route path="calendar" element={<Calendar />} /><Route path="email" element={<Email />} /><Route path="weather" element={<Weather />} /><Route path="insights" element={<Insights />} /><Route path="system" element={<System />} /><Route path="github" element={<GitHub />} /><Route path="alexa" element={<AlexaLab />} /><Route path="settings" element={<Settings />} /><Route path="*" element={<Overview />} /></Route></Routes>
+    <Routes>
+      <Route path="/privacy-policy" element={<PrivacyPolicy standalone />} />
+      <Route element={<Layout />}>
+        <Route index element={<Overview />} />
+        <Route path="assistant" element={<Assistant />} />
+        <Route path="tasks" element={<Tasks />} />
+        <Route path="calendar" element={<Calendar />} />
+        <Route path="email" element={<Email />} />
+        <Route path="weather" element={<Weather />} />
+        <Route path="insights" element={<Insights />} />
+        <Route path="system" element={<System />} />
+        <Route path="github" element={<GitHub />} />
+        <Route path="alexa" element={<AlexaLab />} />
+        <Route path="settings" element={<Settings />} />
+        <Route path="*" element={<Overview />} />
+      </Route>
+    </Routes>
     <div className="toast-wrap" role="status" aria-live="polite">{toasts.map((t) => <div key={t.id} className={`toast ${t.kind}`}>{t.message}</div>)}</div>
   </>;
 }
