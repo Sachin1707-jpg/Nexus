@@ -13,14 +13,17 @@ import GitHub from './pages/GitHub.jsx';
 import AlexaLab from './pages/AlexaLab.jsx';
 import Settings from './pages/Settings.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
+import TermsOfService from './pages/TermsOfService.jsx';
 import { Loading } from './components/ui.jsx';
 
 function Shell() {
   const { boot, toasts } = useApp();
   const location = useLocation();
-  const isPrivacyPage = location.pathname === '/privacy-policy';
+  const isPublicPage = location.pathname === '/privacy-policy' || 
+                       location.pathname === '/terms-of-service' || 
+                       location.pathname === '/terms';
 
-  if (!isPrivacyPage) {
+  if (!isPublicPage) {
     if (boot.loading) return <div className="page"><Loading /></div>;
     if (boot.error) return <div className="page"><div className="notice bad" role="alert">{boot.error}</div></div>;
   }
@@ -28,6 +31,8 @@ function Shell() {
   return <>
     <Routes>
       <Route path="/privacy-policy" element={<PrivacyPolicy standalone />} />
+      <Route path="/terms-of-service" element={<TermsOfService standalone />} />
+      <Route path="/terms" element={<TermsOfService standalone />} />
       <Route element={<Layout />}>
         <Route index element={<Overview />} />
         <Route path="assistant" element={<Assistant />} />

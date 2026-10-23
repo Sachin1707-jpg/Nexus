@@ -402,6 +402,7 @@ export default function PrivacyPolicy({ standalone = false }) {
         <nav className="footer-nav" aria-label="Footer links">
           <NavLink to="/">Workspace Home</NavLink>
           <NavLink to="/privacy-policy" style={{ color: 'var(--text)', fontWeight: 550 }}>Privacy Policy</NavLink>
+          <NavLink to="/terms-of-service">Terms of Service</NavLink>
           <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer">
             Google User Data Policy
           </a>

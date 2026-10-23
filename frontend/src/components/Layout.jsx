@@ -46,7 +46,8 @@ export default function Layout() {
           <div className="status-line" title={status?.ollama?.message}><span className={`dot ${ok ? 'ok' : 'bad'}`} /><span className="txt">{status ? (ok ? `${status.ollama.model} ready` : status.ollama.message) : 'Server offline'}</span></div>
           <div className="row"><button className="btn icon-btn sm" onClick={() => saveSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })} aria-label="Toggle theme">{settings?.theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}</button>
             <button className="btn icon-btn sm collapse-btn" onClick={() => setMini(!mini)} aria-label={mini ? 'Expand sidebar' : 'Collapse sidebar'}>{mini ? <PanelLeft size={15} /> : <PanelLeftClose size={15} />}</button>
-            <NavLink to="/privacy-policy" className="faint small" style={{ marginLeft: 'auto', textDecoration: 'none' }} title="Privacy Policy">Privacy</NavLink>
+            <NavLink to="/privacy-policy" className="faint small" style={{ marginLeft: 'auto', textDecoration: 'none', marginRight: 8 }} title="Privacy Policy">Privacy</NavLink>
+            <NavLink to="/terms-of-service" className="faint small" style={{ textDecoration: 'none' }} title="Terms of Service">Terms</NavLink>
           </div>
         </div>
       </aside>
@@ -64,6 +65,7 @@ export default function Layout() {
             <div>&copy; {new Date().getFullYear()} Nexus Workspace &bull; AI Personal Workspace Assistant</div>
             <nav className="footer-nav" aria-label="Footer links">
               <NavLink to="/privacy-policy">Privacy Policy</NavLink>
+              <NavLink to="/terms-of-service">Terms of Service</NavLink>
               <NavLink to="/settings">Settings</NavLink>
               <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer">Google User Data Policy</a>
             </nav>
@@ -81,6 +83,7 @@ function Palette({ onClose, nav, newChat }) {
     { label: 'New conversation', run: newChat },
     ...NAV.map(([to, t]) => ({ label: `Go to ${t}`, run: () => nav(to) })),
     { label: 'Go to Privacy Policy', run: () => nav('/privacy-policy') },
+    { label: 'Go to Terms of Service', run: () => nav('/terms-of-service') },
     ...convs.slice(0, 15).map((c) => ({ label: `Chat: ${c.title}`, run: () => nav(`/assistant?c=${c.id}`) }))
   ].filter((i) => i.label.toLowerCase().includes(q.toLowerCase())), [q, convs, nav, newChat]);
   const go = (i) => { i?.run(); onClose(); };
